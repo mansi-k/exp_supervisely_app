@@ -4,28 +4,23 @@ import names  # requires
 import supervisely as sly
 from dotenv import load_dotenv
 from supervisely.app.widgets import *
-
+from supervisely.app.fastapi.offline import available_after_shutdown
 from clarifai.client.user import User
-import requests
 
 # for convenient debug, has no effect in production
 load_dotenv("local.env")
 load_dotenv(os.path.expanduser("./supervisely.env"))
-api = sly.Api.from_env()
+# api = sly.Api.from_env()
 
 sweep_inputs = []
 non_sweep_inputs = []
 hyperparam_input_values = {}
 
 stub, userDataObject = authenticate()
-print("###########")
-print(stub)
-print(userDataObject)
 
 model_types = model_types_lister()
 model_types_items = [Select.Item(value=mt_id, label=mt_id) for mt_id in model_types]
 select_model_type = Select(items=[Select.Item(value="Select", label="Select")]+model_types_items,filterable=True)
-print("&&&&&&&&&&&&&&&&&&")
 
 note_box = NotificationBox(
     title="Model Type Info",
@@ -54,8 +49,6 @@ for i in range(3):
     # print(card._content._widgets[2]._hide)
     sweep_inputs.append(card)
 
-print(sweep_inputs)
-
 submit_btn = Button(text="Submit")
 submit_btn.hide()
 
@@ -64,8 +57,32 @@ layout = Container(
     widgets=layout_widgets,
     direction="vertical"
 )
-app = sly.Application(layout=layout)
-# layout._widgets[0].hide()
+
+pat_input = Input(placeholder="Enter your PAT here", widget_id="pat_input")
+url_input = Input(placeholder="Enter your module URL from browser here", widget_id="url_input") 
+auth_btn = Button(text="Authenticate", widget_id="auth_btn")
+
+auth_layout = Container(
+    widgets=[pat_input, url_input, auth_btn],
+    direction="vertical"
+)
+
+items = [
+    Menu.Item(title="Authenticate", content=auth_layout),
+    Menu.Item(title="Main Page", content=layout),
+]
+menu = Menu(items=items)
+
+app = sly.Application(layout=menu)
+
+fapi = app.get_server()
+fapi_router = fapi.router
+
+@fapi.get("/add")
+async def read_item(a: int = 0, b: int = 10):
+    print("tttttttttttttttttttttttttttttt")
+    print(a + b)
+    return a + b
 
 for i in range(len(sweep_inputs)):
     @sweep_inputs[i]._content._widgets[3].value_changed
@@ -93,6 +110,7 @@ for i in range(len(sweep_inputs)):
 @submit_btn.click
 def submit():
     print(hyperparam_input_values)
+    print(VAR2)
 
 @select_model_type.value_changed
 def change_model_type(value):
